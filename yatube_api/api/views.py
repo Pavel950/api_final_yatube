@@ -1,15 +1,12 @@
-from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, mixins, serializers, viewsets
+from rest_framework import mixins, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 
 from .permissions import IsAuthorOrReadOnly
 from .serializers import CommentSerializer, FollowSerializer
 from .serializers import GroupSerializer, PostSerializer
-from posts.models import Follow, Group, Post
-
-User = get_user_model()
+from posts.models import Group, Post
 
 
 class CreateListViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
@@ -49,18 +46,10 @@ class CommentViewSet(viewsets.ModelViewSet):
 class FollowViewSet(CreateListViewSet):
     serializer_class = FollowSerializer
     permission_classes = (IsAuthenticated,)
-    filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username',)
 
     def get_queryset(self):
-        return Follow.objects.all().filter(user=self.request.user)
+        return self.request.user.followed_to.all()
 
     def perform_create(self, serializer):
-        if (
-            serializer.initial_data.get('following')
-            == self.request.user.get_username()
-        ):
-            raise serializers.ValidationError(
-                'Пользователь не может подписаться на себя самого!'
-            )
         serializer.save(user=self.request.user)

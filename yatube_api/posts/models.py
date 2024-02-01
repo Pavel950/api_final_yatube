@@ -27,6 +27,9 @@ class Post(models.Model):
         related_name='posts', blank=True, null=True
     )
 
+    class Meta:
+        ordering = ('pub_date',)
+
     def __str__(self):
         return (f'Публикация от автора {self.author.get_username()} '
                 f'в группе {self.group.title}; '
@@ -50,4 +53,13 @@ class Follow(models.Model):
         User, on_delete=models.CASCADE, related_name='followers')
 
     class Meta:
-        unique_together = ('user', 'following')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'following'],
+                name='unique_user_following'
+            ),
+            models.CheckConstraint(
+                check=~models.Q(user=models.F('following')),
+                name='prevent_self_follow'
+            )
+        ]
